@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "63155077",
+    "project_id": "beacons-app-e916d",
+    "storage_bucket": "beacons-app-e916d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:63155077:android:55dc288e66089cb07632ec",
+        "android_client_info": {
+          "package_name": "com.example.beacons_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjHvqNDz3tC7npSJUzl3qJGtk0djbSmks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
