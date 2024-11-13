@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "63155077",
+    "firebase_url": "https://beacons-app-e916d-default-rtdb.firebaseio.com",
     "project_id": "beacons-app-e916d",
     "storage_bucket": "beacons-app-e916d.appspot.com"
   },
