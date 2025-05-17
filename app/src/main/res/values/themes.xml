@@ -2,4 +2,7 @@
 <resources>
 
     <style name="Theme.BEACONS_APP" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Agrega esta versión compat -->
+
 </resources>
+

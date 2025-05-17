@@ -62,6 +62,9 @@ dependencies {
     implementation(libs.androidx.material3.android)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.realtime)
+    implementation(libs.firebase.firestore.ktx)
+    //implementation(libs.androidx.appcompat)
+    //implementation(libs.androidx.benchmark.macro)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -76,6 +79,8 @@ dependencies {
     implementation ("androidx.hilt:hilt-navigation-compose:1.1.0")
     kapt ("com.google.dagger:hilt-android-compiler:2.48")
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+    implementation("no.nordicsemi.android.support.v18:scanner:1.6.0")
 }
 
 /*

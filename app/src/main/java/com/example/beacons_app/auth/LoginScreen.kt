@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,9 +46,10 @@ import androidx.navigation.NavController
 import com.example.beacons_app.DestinationScreen
 import com.example.beacons_app.FbViewModel
 import com.example.beacons_app.R
+import com.example.beacons_app.SharedViewModel
 
 @Composable
-fun LoginScreen(navController: NavController, vm: FbViewModel){
+fun LoginScreen(navController: NavController, vm: FbViewModel, sharedViewModel: SharedViewModel){
     val emty by remember{ mutableStateOf("") }
     var email by remember{ mutableStateOf("") }
     var password by remember{ mutableStateOf("") }
@@ -236,7 +238,15 @@ fun LoginScreen(navController: NavController, vm: FbViewModel){
                         erroeE = false
                         if(password.isNotEmpty()){
                             erroeP = false
-                            vm.login(email,password)
+                            vm.login(email, password) { usuario ->
+                                if (usuario != null) {
+                                    vm.signedIn.value = true
+                                    sharedViewModel.usuario.value = usuario
+                                    navController.navigate(DestinationScreen.Lobby.route)
+                                } else {
+                                    vm.signedIn.value = false
+                                }
+                            }
                         }else{
                             erroeP = true
                         }
@@ -257,11 +267,50 @@ fun LoginScreen(navController: NavController, vm: FbViewModel){
                     fontSize = 30.sp
                 )
             }
-            if(vm.signedIn.value){
-                navController.navigate(DestinationScreen.Success.route)
+
+            /*if (vm.signedIn.value) {
+                navController.navigate(DestinationScreen.Lobby(usuario).route) // Navegar a Lobby
             }
-            vm.signedIn.value = false
+            vm.signedIn.value = false*/
 
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50.dp))
+                .background(
+                    color = Color.White
+                )
+        ){
+            // Volver button
+            Button(
+                onClick = {
+                    navController.navigate(DestinationScreen.Main.route) {
+                        popUpTo(DestinationScreen.Login.route) { inclusive = true }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    Color.Transparent
+                ),
+                modifier = Modifier
+                    .width(100.dp)
+                    .padding(10.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.baseline_person_24), // Replace with your back icon resource
+                    contentDescription = "Volver",
+                    modifier = Modifier.size(20.dp)
+                )
+                /*Text(
+                    text = "Volver",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )*/
+            }
+        }
+
     }
 }

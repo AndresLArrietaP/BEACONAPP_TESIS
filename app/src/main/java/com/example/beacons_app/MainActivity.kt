@@ -1,76 +1,252 @@
 package com.example.beacons_app
 
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.beacons_app.auth.LoginScreen
-import com.example.beacons_app.auth.MainScreen
-import com.example.beacons_app.auth.SignupScreen
-import com.example.beacons_app.auth.SuccessScreen
+import com.example.beacons_app.auth.*
 import com.example.beacons_app.main.NotificationMessage
+import com.example.beacons_app.models.Usuario
 import com.example.beacons_app.ui.theme.BEACONS_APPTheme
 import dagger.hilt.android.AndroidEntryPoint
-//MAIN ACTIVITY
+import javax.inject.Inject
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var bluetoothAdapter: BluetoothAdapter
+
+    private var isBluetoothDialogAlreadyShown = false
+
+    private val enableBtLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isBluetoothDialogAlreadyShown = false
+        if (result.resultCode != Activity.RESULT_OK) {
+            Toast.makeText(
+                this,
+                "La aplicación necesita Bluetooth activado",
+                Toast.LENGTH_SHORT
+            ).show()
+            showBluetoothDialog()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            window.statusBarColor = getColor(R.color.black)
-            window.navigationBarColor = getColor(R.color.black)
             BEACONS_APPTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ){
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     AuthenticationApp()
                 }
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        showBluetoothDialog()
+    }
+
+    private fun showBluetoothDialog() {
+        if (!bluetoothAdapter.isEnabled && !isBluetoothDialogAlreadyShown) {
+            val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            enableBtLauncher.launch(intent)
+            isBluetoothDialogAlreadyShown = true
+        }
+    }
 }
 
-sealed class DestinationScreen(val route: String){
-    object Main: DestinationScreen("main")
-    object Signup: DestinationScreen("signup")
-    object Login: DestinationScreen("login")
-    object Success: DestinationScreen("success")
+sealed class DestinationScreen(val route: String) {
+    object Main : DestinationScreen("main")
+    object Signup : DestinationScreen("signup")
+    object Login : DestinationScreen("login")
+    object Success : DestinationScreen("success")
+    object Lobby : DestinationScreen("lobby")
 }
+
 @Composable
-fun AuthenticationApp(){
-    val vm = hiltViewModel<FbViewModel>()
+fun AuthenticationApp() {
+    val fbViewModel: FbViewModel = hiltViewModel()
+    val sharedViewModel: SharedViewModel = hiltViewModel()
+    val asistenciaViewModel: AsistenciaViewModel = hiltViewModel()
     val navController = rememberNavController()
-    
-    NotificationMessage(vm)
-    
-    NavHost(navController = navController, startDestination = DestinationScreen.Main.route){
-        composable(DestinationScreen.Main.route){
-            MainScreen(navController, vm)
+
+    NotificationMessage(fbViewModel.popupNotification)
+    NotificationMessage(asistenciaViewModel.popupNotification)
+
+    NavHost(navController = navController, startDestination = DestinationScreen.Main.route) {
+        composable(DestinationScreen.Main.route) {
+            MainScreen(navController, fbViewModel)
         }
-        composable(DestinationScreen.Signup.route){
-            SignupScreen(navController, vm)
+        composable(DestinationScreen.Signup.route) {
+            SignupScreen(navController, fbViewModel)
         }
-        composable(DestinationScreen.Login.route){
-            LoginScreen(navController, vm)
+        composable(DestinationScreen.Login.route) {
+            LoginScreen(navController, fbViewModel, sharedViewModel)
         }
-        composable(DestinationScreen.Success.route){
-            SuccessScreen(navController, vm)
+        composable(DestinationScreen.Lobby.route) {
+            sharedViewModel.usuario.value?.let { usuario ->
+                LobbyScreen(navController, fbViewModel, asistenciaViewModel, usuario, sharedViewModel)
+            }
+        }
+        composable(DestinationScreen.Success.route) {
+            SuccessScreen(navController, asistenciaViewModel.ultimaAsistencia.value)
+        }
+    }
+}
+
+
+
+
+
+
+
+
+/*package com.example.beacons_app
+
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.beacons_app.auth.LobbyScreen
+import com.example.beacons_app.auth.LoginScreen
+import com.example.beacons_app.auth.MainScreen
+import com.example.beacons_app.auth.SignupScreen
+import com.example.beacons_app.auth.SuccessScreen
+import com.example.beacons_app.main.NotificationMessage
+import com.example.beacons_app.models.Usuario
+import com.example.beacons_app.ui.theme.BEACONS_APPTheme
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var bluetoothAdapter: BluetoothAdapter
+
+    private var isBluetoothDialogAlreadyShown = false
+
+    // Launcher para activar Bluetooth si está apagado
+    private val enableBtLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isBluetoothDialogAlreadyShown = false
+        if (result.resultCode != Activity.RESULT_OK) {
+            Toast.makeText(
+                this,
+                "La aplicación necesita Bluetooth activado",
+                Toast.LENGTH_SHORT
+            ).show()
+            showBluetoothDialog()
         }
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        //startActivity(Intent(this, BLEScanActivity::class.java))
+        setContent {
+            window.statusBarColor     = getColor(R.color.black)
+            window.navigationBarColor = getColor(R.color.black)
+
+            BEACONS_APPTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    AuthenticationApp()
+                }
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Solo nos aseguramos de que BT esté activado
+        showBluetoothDialog()
+    }
+
+    private fun showBluetoothDialog() {
+        if (!bluetoothAdapter.isEnabled && !isBluetoothDialogAlreadyShown) {
+            val intent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            enableBtLauncher.launch(intent)
+            isBluetoothDialogAlreadyShown = true
+        }
+    }
 }
+
+// Navegación
+sealed class DestinationScreen(val route: String) {
+    object Main    : DestinationScreen("main")
+    object Signup  : DestinationScreen("signup")
+    object Login   : DestinationScreen("login")
+    object Success : DestinationScreen("success")
+    object Lobby   : DestinationScreen("lobby")
+}
+
+
+@Composable
+fun AuthenticationApp() {
+    val fbViewModel: FbViewModel = hiltViewModel()
+    val sharedViewModel: SharedViewModel = hiltViewModel()
+    val asistenciaViewModel: AsistenciaViewModel = hiltViewModel()
+    val navController = rememberNavController()
+
+    // Mostrar toasts de mensajes desde ambos ViewModels
+    NotificationMessage(fbViewModel.popupNotification)
+    NotificationMessage(asistenciaViewModel.popupNotification)
+
+    NavHost(navController = navController, startDestination = DestinationScreen.Main.route) {
+        composable(DestinationScreen.Main.route) {
+            MainScreen(navController, fbViewModel)
+        }
+        composable(DestinationScreen.Signup.route) {
+            SignupScreen(navController, fbViewModel)
+        }
+        composable(DestinationScreen.Login.route) {
+            LoginScreen(navController, fbViewModel, sharedViewModel)
+        }
+        composable(DestinationScreen.Success.route) {
+            SuccessScreen(navController, fbViewModel)
+        }
+        composable(DestinationScreen.Lobby.route) {
+            sharedViewModel.usuario.value?.let { usuario ->
+                LobbyScreen(navController, fbViewModel, asistenciaViewModel, usuario)
+            }
+        }
+    }
+}*/
+
