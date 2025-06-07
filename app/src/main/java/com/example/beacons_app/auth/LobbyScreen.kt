@@ -130,7 +130,7 @@ fun LobbyScreen(
         Spacer(modifier = Modifier.height(15.dp))
 
         GradientButton("Historial de asistencia") {
-            // navController.navigate(DestinationScreen.History.route)
+            navController.navigate(DestinationScreen.HistorialA.route)
         }
 
         Spacer(modifier = Modifier.height(15.dp))

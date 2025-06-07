@@ -1,36 +1,15 @@
 package com.example.beacons_app.auth
 
-//import androidx.benchmark.perfetto.Row
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,7 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,7 +31,6 @@ import com.example.beacons_app.FbViewModel
 import com.example.beacons_app.R
 import com.example.beacons_app.models.Usuario
 import kotlinx.coroutines.delay
-import org.w3c.dom.Text
 
 @Composable
 fun SignupScreen(navController: NavController, vm: FbViewModel) {
@@ -65,11 +42,9 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
     var cu by remember { mutableStateOf("") }
     var nrotelefonico by remember { mutableStateOf("") }
 
-    // Control de visibilidad de contraseñas
     var passwordVisibility by remember { mutableStateOf(false) }
     var confirmPasswordVisibility by remember { mutableStateOf(false) }
 
-    // Estados para errores
     var isNombreValid by remember { mutableStateOf(true) }
     var isApellidosValid by remember { mutableStateOf(true) }
     var isCodigoValid by remember { mutableStateOf(true) }
@@ -77,6 +52,11 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
     var isEmailValid by remember { mutableStateOf(true) }
     var isPasswordValid by remember { mutableStateOf(true) }
     var isConfirmPasswordValid by remember { mutableStateOf(true) }
+
+    var selectedTipo by remember { mutableStateOf("") }
+    val tipos = listOf("Docente", "Administrativo", "Desarrollador")
+    var expanded by remember { mutableStateOf(false) }
+    var isTipoValid by remember { mutableStateOf(true) }
 
     Image(
         painter = painterResource(id = R.drawable.rd),
@@ -88,8 +68,8 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
-    ){
-        if(vm.inProgress.value){
+    ) {
+        if (vm.inProgress.value) {
             CircularProgressIndicator()
         }
     }
@@ -97,12 +77,9 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .padding(top = 50.dp)
-            .verticalScroll(
-                rememberScrollState()
-            ),
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Título
         Text(
             text = "Registro de usuario",
             color = Color.White,
@@ -112,95 +89,86 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // Campo para Nombres
         CustomTextField(
             value = nombres,
             label = "Nombres",
             onValueChange = {
                 nombres = it
-                isNombreValid = nombres.isNotEmpty()},
+                isNombreValid = nombres.isNotEmpty()
+            },
             leadingIcon = R.drawable.baseline_person_24
         )
-
-        // Reservar espacio para el mensaje de error del nombre
         Box(modifier = Modifier.height(20.dp)) {
             if (!isNombreValid) {
-                Text(
-                    text = "Ingrese nombre",
-                    color = Color.Red,
-                    fontSize = 12.sp
-                )
+                Text("Ingrese nombre", color = Color.Red, fontSize = 12.sp)
             }
         }
 
-        // Campo para Apellidos
         CustomTextField(
             value = apellidos,
             label = "Apellidos",
             onValueChange = {
                 apellidos = it
-                isApellidosValid = apellidos.isNotEmpty()},
+                isApellidosValid = apellidos.isNotEmpty()
+            },
             leadingIcon = R.drawable.baseline_person_24
         )
-
-        // Reservar espacio para el mensaje de error de apellidos
         Box(modifier = Modifier.height(20.dp)) {
             if (!isApellidosValid) {
-                Text(
-                    text = "ingrese apellidos",
-                    color = Color.Red,
-                    fontSize = 12.sp
-                )
+                Text("Ingrese apellidos", color = Color.Red, fontSize = 12.sp)
             }
         }
 
-        // Campo para Código
         CustomTextField(
             value = cu,
             label = "Código institucional",
             onValueChange = {
                 cu = it
-                isCodigoValid = cu.isNotEmpty()},
+                isCodigoValid = cu.isNotEmpty()
+            },
             leadingIcon = R.drawable.baseline_person_24
         )
-
-        // Reservar espacio para el mensaje de error del codigo
         Box(modifier = Modifier.height(20.dp)) {
             if (!isCodigoValid) {
-                Text(
-                    text = "Código no válido o vacío",
-                    color = Color.Red,
-                    fontSize = 12.sp
-                )
+                Text("Código no válido o vacío", color = Color.Red, fontSize = 12.sp)
             }
         }
 
-        // Campo para Telefono
         CustomTextField(
             value = nrotelefonico,
             label = "Número Telefónico",
             onValueChange = { input ->
-                // Filtra solo dígitos y limita a 9 caracteres
                 val filteredInput = input.filter { it.isDigit() }.take(9)
                 nrotelefonico = filteredInput
-                isNumeroValid = filteredInput.length == 9 // Verifica que tenga exactamente 9 dígitos
+                isNumeroValid = filteredInput.length == 9
             },
             leadingIcon = R.drawable.baseline_person_24
         )
-
-        // Reservar espacio para el mensaje de error del número
         Box(modifier = Modifier.height(20.dp)) {
             if (!isNumeroValid) {
-                Text(
-                    text = "Número no válido",
-                    color = Color.Red,
-                    fontSize = 12.sp
-                )
+                Text("Número no válido", color = Color.Red, fontSize = 12.sp)
             }
         }
 
+        // ComboBox con tu estilo
+        CustomComboBoxField(
+            selectedValue = selectedTipo,
+            options = tipos,
+            onValueSelected = {
+                selectedTipo = it
+                isTipoValid = true
+            },
+            isValid = isTipoValid,
+            expanded = expanded,
+            onDropdownExpandedChange = { expanded = it }
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Box(modifier = Modifier.height(20.dp)) {
+            if (!isTipoValid) {
+                Text("Seleccione un tipo de usuario", color = Color.Red, fontSize = 12.sp)
+            }
+        }
 
-        // Campo para Correo Electrónico
         CustomTextField(
             value = email,
             label = "Correo",
@@ -210,21 +178,12 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
             },
             leadingIcon = R.drawable.baseline_person_24
         )
-
-        // Reservar espacio para el mensaje de error del correo
         Box(modifier = Modifier.height(20.dp)) {
             if (!isEmailValid) {
-                Text(
-                    text = "Correo no válido o vacío",
-                    color = Color.Red,
-                    fontSize = 12.sp
-                )
+                Text("Correo no válido o vacío", color = Color.Red, fontSize = 12.sp)
             }
         }
 
-        //Spacer(modifier = Modifier.height(20.dp))
-
-        // Campo para Contraseña
         CustomPasswordField(
             value = password,
             label = "Contraseña",
@@ -235,21 +194,12 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
             visibility = passwordVisibility,
             onVisibilityChange = { passwordVisibility = !passwordVisibility }
         )
-
-        // Reservar espacio para el mensaje de error de la contraseña
         Box(modifier = Modifier.height(20.dp)) {
             if (!isPasswordValid) {
-                Text(
-                    text = "Contraseña debe tener al menos 6 caracteres",
-                    color = Color.Red,
-                    fontSize = 12.sp
-                )
+                Text("Contraseña debe tener al menos 6 caracteres", color = Color.Red, fontSize = 12.sp)
             }
         }
 
-        //Spacer(modifier = Modifier.height(20.dp))
-
-        // Campo para Confirmar Contraseña
         CustomPasswordField(
             value = confirmPassword,
             label = "Confirmar contraseña",
@@ -260,15 +210,9 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
             visibility = confirmPasswordVisibility,
             onVisibilityChange = { confirmPasswordVisibility = !confirmPasswordVisibility }
         )
-
-        // Reservar espacio para el mensaje de error de confirmación de contraseña
         Box(modifier = Modifier.height(20.dp)) {
             if (!isConfirmPasswordValid) {
-                Text(
-                    text = "La confirmación de la contraseña no coincide",
-                    color = Color.Red,
-                    fontSize = 12.sp
-                )
+                Text("La confirmación de la contraseña no coincide", color = Color.Red, fontSize = 12.sp)
             }
         }
 
@@ -289,47 +233,31 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
             ) {
                 Button(
                     onClick = {
-                        if (isNombreValid &&
-                            isApellidosValid &&
-                            isNumeroValid &&
-                            isCodigoValid &&
-                            isEmailValid &&
-                            isPasswordValid &&
-                            isConfirmPasswordValid) {
-
+                        if (isNombreValid && isApellidosValid && isNumeroValid &&
+                            isCodigoValid && isEmailValid && isPasswordValid &&
+                            isConfirmPasswordValid && isTipoValid
+                        ) {
                             val usuario = Usuario(
                                 u_nombres = nombres,
                                 u_apellidos = apellidos,
                                 cu = cu,
                                 u_contrasena = password,
-                                u_nrotelefonico = nrotelefonico
+                                u_nrotelefonico = nrotelefonico,
+                                u_tipo = selectedTipo
                             )
-                            // ... creación del objeto usuario con los datos del formulario ...
                             vm.onSignup(email, password, usuario)
-
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                     modifier = Modifier.width(150.dp)
                 ) {
-                    Text(
-                        text = "Registrar",
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
+                    Text("Registrar", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 }
 
                 if (vm.signedIn.value) {
                     LaunchedEffect(Unit) {
-                        navController.navigate(DestinationScreen.Success.route) {
+                        navController.navigate(DestinationScreen.Login.route) {
                             popUpTo(DestinationScreen.Signup.route) { inclusive = true }
-                        }
-                        delay(5000)
-                        navController.navigate(DestinationScreen.Main.route) {
-                            popUpTo(DestinationScreen.Success.route) { inclusive = true }
                         }
                     }
                     vm.signedIn.value = false
@@ -345,13 +273,11 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
             ) {
                 Button(
                     onClick = {
-                        navController.navigate(DestinationScreen.Main.route) {
+                        navController.navigate(DestinationScreen.Login.route) {
                             popUpTo(DestinationScreen.Signup.route) { inclusive = true }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        Color.Transparent
-                    ),
+                    colors = ButtonDefaults.buttonColors(Color.Transparent),
                     modifier = Modifier
                         .width(100.dp)
                         .padding(10.dp)
@@ -366,6 +292,48 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
         }
     }
 }
+
+@Composable
+fun CustomComboBoxField(
+    selectedValue: String,
+    options: List<String>,
+    onValueSelected: (String) -> Unit,
+    isValid: Boolean,
+    onDropdownExpandedChange: (Boolean) -> Unit,
+    expanded: Boolean
+) {
+    Box(
+        modifier = Modifier
+            .width(300.dp)
+            .height(60.dp)
+            .clip(RoundedCornerShape(50.dp))
+            .background(if (isValid) Color(0x30FFFFFF) else Color(0x30FF0000))
+            .clickable { onDropdownExpandedChange(true) }
+            .padding(horizontal = 16.dp, vertical = 18.dp)
+    ) {
+        Text(
+            text = if (selectedValue.isEmpty()) "Seleccione tipo de usuario" else selectedValue,
+            color = if (selectedValue.isEmpty()) Color.Gray else Color.White,
+            fontSize = 18.sp
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onDropdownExpandedChange(false) }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onValueSelected(option)
+                        onDropdownExpandedChange(false)
+                    }
+                )
+            }
+        }
+    }
+}
+
 
 @Composable
 fun CustomTextField(

@@ -12,4 +12,13 @@ data class Asistencia(
     val descripcion: String = "",
     val conexion: String = "Uninitialized"
 ) {
+    constructor() : this(
+        0,
+        0,
+        "",
+        0,
+        0,
+        false,
+        "",
+        "")
 }

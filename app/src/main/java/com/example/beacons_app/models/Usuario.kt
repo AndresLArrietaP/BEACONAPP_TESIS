@@ -2,7 +2,7 @@ package com.example.beacons_app.models
 
 data class Usuario(
     val usuario_id: Int = 0,
-    val u_tipo: String = "Docente",
+    val u_tipo: String = "",
     val u_nombres: String = "",
     val u_apellidos: String = "",
     val cu: String = "",
@@ -12,7 +12,7 @@ data class Usuario(
 ){
     constructor() : this(
         0,
-        "Docente",
+        "",
         "",
         "",
         "",
