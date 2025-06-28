@@ -124,7 +124,7 @@ fun LobbyScreen(
         Spacer(modifier = Modifier.height(40.dp))
 
         GradientButton("Horario y aula") {
-            // navController.navigate(DestinationScreen.Schedule.route)
+            navController.navigate(DestinationScreen.VerHorarios.route)
         }
 
         Spacer(modifier = Modifier.height(15.dp))

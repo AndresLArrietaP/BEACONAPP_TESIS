@@ -1,12 +1,16 @@
 package com.example.beacons_app.models
 
 data class Horario(
-    val horario_id: Int = 0,
-    val modalidad_id: Int = 0,
-    val nombre_curso: String = "",
-    val creditos: Int = 0,
-    val grupo: String = "",
+    val id_horario: Long = 0,
+    val id_curso: Long = 0,
+    val id_modalidad: Long = 0,
     val dia: String = "",
-    val aula: String = ""
+    val horas: List<Long> = emptyList(),
+    val aula: String = "",
+    val grupo: Long = 0
 ) {
+    constructor() : this(0, 0, 0, "", emptyList(), "", 0)
 }
+
+
+

@@ -17,13 +17,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.beacons_app.DestinationScreen
 import com.example.beacons_app.R
 import com.example.beacons_app.models.Usuario
 
 @Composable
 fun LobbyPersonalScreen(navController: NavController, usuario: Usuario) {
     Image(
-        painter = painterResource(id = R.drawable.gr),
+        painter = painterResource(id = R.drawable.bl),
         contentDescription = null,
         contentScale = ContentScale.FillBounds,
         modifier = Modifier.fillMaxSize()
@@ -35,41 +36,62 @@ fun LobbyPersonalScreen(navController: NavController, usuario: Usuario) {
         modifier = Modifier.fillMaxSize()
     ) {
         Text(
-            text = "Bienvenido Administrativo",
-            color = Color.White,
+            text = "BIENVENIDO",
+            color = Color(0xFFEFF3F5),
             fontSize = 30.sp
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Usuario: ${usuario.u_nombres} ${usuario.u_apellidos}",
-            color = Color.White,
-            fontSize = 18.sp
+            text = "${usuario.u_nombres} ${usuario.u_apellidos}",
+            color = Color.LightGray,
+            fontSize = 16.sp
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        Box(
+        // Botón Cargar Horarios
+        CustomButtonField("Cargar Horarios") {
+            navController.navigate(DestinationScreen.ListaProfesores.route)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón Descargar reportes (por ahora no hace nada)
+        CustomButtonField("Descargar reportes") {
+            // Acción futura
+            println("Descargar reportes (no implementado)")
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Botón Cerrar sesión
+        CustomButtonField("Cerrar sesión") {
+            navController.popBackStack()
+        }
+    }
+}
+
+@Composable
+fun CustomButtonField(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50.dp))
+            .background(color = Color.White)
+    ) {
+        Button(
+            onClick = onClick,
+            colors = ButtonDefaults.buttonColors(Color.Transparent),
             modifier = Modifier
-                .clip(RoundedCornerShape(50.dp))
-                .background(color = Color.White)
+                .width(200.dp)
+                .padding(10.dp)
         ) {
-            Button(
-                onClick = {
-                    navController.popBackStack()
-                },
-                colors = ButtonDefaults.buttonColors(Color.Transparent),
-                modifier = Modifier
-                    .width(200.dp)
-                    .padding(10.dp)
-            ) {
-                Text(
-                    text = "Cerrar sesión",
-                    color = Color.Black,
-                    fontSize = 16.sp
-                )
-            }
+            Text(
+                text = text,
+                color = Color.Black,
+                fontSize = 16.sp
+            )
         }
     }
 }
