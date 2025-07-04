@@ -13,16 +13,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.beacons_app.DestinationScreen
+import com.example.beacons_app.FbViewModel
 import com.example.beacons_app.R
 import com.example.beacons_app.models.Usuario
 
 @Composable
-fun LobbyPersonalScreen(navController: NavController, usuario: Usuario) {
+fun LobbyPersonalScreen(
+    navController: NavController,
+    usuario: Usuario,
+    fbViewModel: FbViewModel
+) {
+    val context = LocalContext.current
     Image(
         painter = painterResource(id = R.drawable.bl),
         contentDescription = null,
@@ -68,7 +75,10 @@ fun LobbyPersonalScreen(navController: NavController, usuario: Usuario) {
 
         // Botón Cerrar sesión
         CustomButtonField("Cerrar sesión") {
-            navController.popBackStack()
+            fbViewModel.logout(context)
+            navController.navigate(DestinationScreen.Login.route) {
+                popUpTo(DestinationScreen.Lobby.route) { inclusive = true }
+            }
         }
     }
 }

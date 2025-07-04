@@ -12,6 +12,7 @@ import com.example.beacons_app.DataBeacon.GestorAsistenciaReceptor
 import com.example.beacons_app.models.Asistencia
 import com.example.beacons_app.models.AsistenciaUsuario
 import com.example.beacons_app.models.Beacon
+import com.example.beacons_app.models.Horario
 import com.example.beacons_app.models.Usuario
 import com.example.beacons_app.util.Recurso
 import com.google.firebase.auth.FirebaseAuth
@@ -29,17 +30,16 @@ class GestorAsistenciaBLEReceptor(
     private val bluetoothAdapter: BluetoothAdapter,
     private val context: Context,
     private val database: FirebaseDatabase,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val horarioActivo: Horario // ← se pasa desde LobbyScreen
 ) : GestorAsistenciaReceptor {
 
     companion object {
         private const val TAG = "GestorAsistBLEReceptor"
-        // MAC del beacon esperado y umbral de señal RSSI (configurable)
         private const val TARGET_DEVICE_MAC = "DD:34:02:09:C2:6C"
         private const val RSSI_THRESHOLD = -70
         private const val REQUIRED_DETECTIONS = 2
     }
-
 
     override val data = MutableSharedFlow<Recurso<AsistenciaUsuario>>()
 
@@ -48,7 +48,7 @@ class GestorAsistenciaBLEReceptor(
         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
         .build()
     private var isScanning = false
-    private var detectionCount = 0  // Contador de detecciones consecutivas del beacon
+    private var detectionCount = 0
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun startReceiving() {
@@ -66,23 +66,18 @@ class GestorAsistenciaBLEReceptor(
             return
         }
 
-        // Reiniciar estado previo antes de nuevo escaneo
         disconnect()
-        // Reiniciar contador de detecciones previas
         detectionCount = 0
 
         scope.launch {
-            data.emit(Recurso.Loading<AsistenciaUsuario>(message = "Iniciando scan iBeacon…"))
-
+            data.emit(Recurso.Loading(message = "Iniciando scan iBeacon…"))
         }
 
-        // Iniciar escaneo con filtro por MAC específico
         val filters = listOf(ScanFilter.Builder().setDeviceAddress(TARGET_DEVICE_MAC).build())
         bleScanner.startScan(filters, scanSettings, scanCallback)
         isScanning = true
         Log.d(TAG, "✅ startScan() ejecutado con filtro de MAC")
 
-        // Timeout de 10 segundos si no se detecta confirmación del beacon
         scope.launch {
             delay(10_000)
             if (isScanning) {
@@ -101,14 +96,13 @@ class GestorAsistenciaBLEReceptor(
         }
     }
 
-    override fun reconnect() { /* No aplica en este contexto */ }
+    override fun reconnect() {}
 
     override fun closeConnection() {
         disconnect()
         scope.cancel()
     }
 
-    // Callback de resultados de escaneo BLE
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             val device = result.device
@@ -121,7 +115,6 @@ class GestorAsistenciaBLEReceptor(
                 Log.d(TAG, "📦 Bytes recibidos: $hex")
             }
 
-            // Filtrar por el dispositivo objetivo y umbral de señal
             if (result.device.address.equals(TARGET_DEVICE_MAC, ignoreCase = true)) {
                 val rssi = result.rssi
                 if (rssi >= RSSI_THRESHOLD) {
@@ -129,17 +122,14 @@ class GestorAsistenciaBLEReceptor(
                     val iBeacon = beaconBytes?.parseIBeacon()
                     if (iBeacon != null) {
                         if (detectionCount < REQUIRED_DETECTIONS - 1) {
-                            // Primera detección válida del beacon
                             detectionCount++
                             Log.d(TAG, "🔍 Beacon detectado una vez (RSSI=$rssi), esperando segunda confirmación...")
                         } else {
-                            // Segunda detección consecutiva: confirmar asistencia
                             detectionCount++
                             Log.d(TAG, "✅ Beacon confirmado con $detectionCount detecciones consecutivas.")
                             disconnect()
                             scope.launch {
-                                data.emit(Recurso.Loading<AsistenciaUsuario>(message = "Iniciando scan iBeacon…"))
-
+                                data.emit(Recurso.Loading(message = "Confirmando asistencia…"))
                                 checkInUserWithBeacon(iBeacon)
                             }
                         }
@@ -158,34 +148,23 @@ class GestorAsistenciaBLEReceptor(
         }
     }
 
-    /**
-     * Verifica si la ubicación del dispositivo está habilitada (necesaria para escaneo BLE en Android).
-     */
     private fun isLocationEnabled(context: Context): Boolean {
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
                 locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
-    /**
-     * Registra la asistencia del usuario actual utilizando la información del beacon detectado.
-     * Guarda la asistencia en la base de datos y emite el resultado.
-     */
     suspend fun checkInUserWithBeacon(ibeacon: IBeacon) {
         try {
             val fbUser = auth.currentUser ?: return data.emit(Recurso.Error("No session"))
 
-            // Obtener el usuario desde "users/{uid}"
-            val userSnap = database.getReference("users")
-                .child(fbUser.uid).get().await()
-
+            val userSnap = database.getReference("users").child(fbUser.uid).get().await()
             val usuario = userSnap.getValue(Usuario::class.java)
                 ?: return data.emit(Recurso.Error("Usuario no encontrado"))
 
             val uuidStr = ibeacon.uuid.toString()
             val beaconsRef = database.getReference("beacons")
 
-            // Buscar beacon existente por UUID o registrar uno nuevo
             val q = beaconsRef.orderByChild("uuid").equalTo(uuidStr).limitToFirst(1).get().await()
             val (beaconId, beaconDesc) = if (q.exists()) {
                 val b = q.children.first().getValue(Beacon::class.java)!!
@@ -198,7 +177,6 @@ class GestorAsistenciaBLEReceptor(
                 id to nuevoBeacon.descripcion
             }
 
-            // Obtener asistencia_id incremental
             val asistenciaRef = database.getReference("asistencia")
             val lastAsistSnapshot = asistenciaRef.orderByChild("asistencia_id").limitToLast(1).get().await()
             val newAsistenciaId = if (lastAsistSnapshot.exists()) {
@@ -209,23 +187,20 @@ class GestorAsistenciaBLEReceptor(
                 0
             } + 1
 
-            // Crear objeto asistencia
             val asistencia = Asistencia(
                 asistencia_id = newAsistenciaId,
                 beacons_id = beaconId,
                 beacon_uuid = uuidStr,
-                modalidad_id = 2, // modalidad presencial por defecto
-                horario_id = 1,
+                modalidad_id = horarioActivo.id_modalidad.toInt(),
+                horario_id = horarioActivo.id_horario.toInt(),
                 estado = true,
                 descripcion = beaconDesc,
-                conexion = "Connected" // Si EstadoConexion ya no es un sealed class
+                conexion = "Connected"
             )
 
-            // Generar clave única para el registro
             val aKey = asistenciaRef.push().key!!
             asistenciaRef.child(aKey).setValue(asistencia).await()
 
-            // Obtener fecha y hora exacta de Perú
             val peruTimeZone = TimeZone.getTimeZone("America/Lima")
             val date = Calendar.getInstance(peruTimeZone).time
 
@@ -237,7 +212,6 @@ class GestorAsistenciaBLEReceptor(
                 timeZone = peruTimeZone
             }.format(date)
 
-            // Crear objeto asistencia_usuario
             val asu = AsistenciaUsuario(
                 usuario = usuario,
                 asistencia = asistencia,
@@ -245,15 +219,16 @@ class GestorAsistenciaBLEReceptor(
                 hora_registro = fHora
             )
 
-            // Guardar en asistencia_usuario/{usuario_id}/{aKey}
             database.getReference("asistencia_usuario")
                 .child(usuario.usuario_id.toString())
                 .child(aKey).setValue(asu).await()
 
-            // ✅ Emitimos el objeto completo que ahora incluye el usuario, la asistencia y el timestamp
-            data.emit(Recurso.Success(asu))
+            val semanaRef = database.getReference("horario_usuario/${usuario.usuario_id}/${horarioActivo.id_horario}/semana")
+            val semanaActual = semanaRef.get().await().getValue(Int::class.java) ?: 0
+            semanaRef.setValue(semanaActual + 1).await()
 
-            data.emit(Recurso.Idle) // Emitir Idle después de la operación exitosa
+            data.emit(Recurso.Success(asu))
+            data.emit(Recurso.Idle)
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error en checkInUserWithBeacon", e)
@@ -261,13 +236,8 @@ class GestorAsistenciaBLEReceptor(
         }
     }
 
-
-
-
-    // Estructura para datos de un iBeacon (UUID, major, minor, txPower)
     data class IBeacon(val uuid: UUID, val major: Int, val minor: Int, val txPower: Byte)
 
-    // Función de extensión para parsear bytes de anuncio iBeacon
     private fun ByteArray.parseIBeacon(): IBeacon? {
         for (i in 0 until size - 30) {
             if ((this[i].toInt() and 0xFF) == 0x02 && (this[i + 1].toInt() and 0xFF) == 0x15) {
@@ -288,6 +258,7 @@ class GestorAsistenciaBLEReceptor(
         return null
     }
 }
+
 
 
 /*package com.example.beacons_app.DataBeacon.BLE

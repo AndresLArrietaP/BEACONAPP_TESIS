@@ -81,6 +81,9 @@ dependencies {
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
     implementation("no.nordicsemi.android.support.v18:scanner:1.6.0")
+    implementation ("androidx.work:work-runtime-ktx:2.9.0")
+    implementation ("com.google.code.gson:gson:2.10.1")
+
 }
 
 /*

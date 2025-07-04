@@ -91,11 +91,11 @@ sealed class DestinationScreen(val route: String) {
 fun AuthenticationApp() {
     val fbViewModel: FbViewModel = hiltViewModel()
     val sharedViewModel: SharedViewModel = hiltViewModel()
-    val asistenciaViewModel: AsistenciaViewModel = hiltViewModel()
+    //val asistenciaViewModel: AsistenciaViewModel = hiltViewModel()
     val navController = rememberNavController()
 
     NotificationMessage(fbViewModel.popupNotification)
-    NotificationMessage(asistenciaViewModel.popupNotification)
+    //NotificationMessage(asistenciaViewModel.popupNotification)
 
     NavHost(navController = navController, startDestination = DestinationScreen.Login.route) {
 
@@ -109,13 +109,13 @@ fun AuthenticationApp() {
 
         composable(DestinationScreen.Lobby.route) {
             sharedViewModel.usuario.value?.let { usuario ->
-                LobbyScreen(navController, fbViewModel, asistenciaViewModel, usuario, sharedViewModel)
+                LobbyScreen(navController, fbViewModel, usuario, sharedViewModel)
             }
         }
 
         composable(DestinationScreen.LobbyPersonal.route) {
             sharedViewModel.usuario.value?.let { usuario ->
-                LobbyPersonalScreen(navController, usuario)
+                LobbyPersonalScreen(navController, usuario,fbViewModel)
             }
         }
 
@@ -126,8 +126,9 @@ fun AuthenticationApp() {
         }
 
         composable(DestinationScreen.Success.route) {
-            SuccessScreen(navController, asistenciaViewModel.ultimaAsistencia.value)
+            SuccessScreen(navController, sharedViewModel.ultimaAsistencia.value)
         }
+
 
         composable(DestinationScreen.ListaProfesores.route) {
             ListaProfesoresScreen(navController, fbViewModel)

@@ -14,6 +14,14 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import java.text.SimpleDateFormat
+import java.util.*
+import android.content.Context
+import androidx.work.*
+import com.example.beacons_app.NotificacionWorker
+import com.google.gson.Gson
+import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
 @HiltViewModel
 class FbViewModel @Inject constructor(
@@ -135,9 +143,22 @@ class FbViewModel @Inject constructor(
     /**
      * Cierra la sesión actual de Firebase.
      */
-    fun logout() {
+    /*fun logout() {
         auth.signOut()
         signedIn.value = false
+    }*/
+
+    fun logout(context: Context) {
+        auth.signOut()
+        signedIn.value = false
+        val prefs = context.getSharedPreferences("session", Context.MODE_PRIVATE)
+        prefs.edit().remove("usuario_guardado").apply()
+    }
+
+    fun guardarUsuarioEnLocal(context: Context, usuario: Usuario) {
+        val sharedPrefs = context.getSharedPreferences("session", Context.MODE_PRIVATE)
+        val json = Gson().toJson(usuario)
+        sharedPrefs.edit().putString("usuario_guardado", json).apply()
     }
 
     fun getDocentes(onResult: (List<Usuario>) -> Unit) {
@@ -393,178 +414,6 @@ class FbViewModel @Inject constructor(
             }
     }
 
-
-
-
-    /*fun guardarHorarioCompleto(idUsuario: Int, horario: Horario, onResult: (Boolean, String) -> Unit) {
-        // Obtener el curso seleccionado y su referencia
-        refCursos.orderByChild("id_curso").equalTo(horario.id_curso.toDouble()).get()
-            .addOnSuccessListener { courseSnapshot ->
-                if (!courseSnapshot.exists()) {
-                    onResult(false, "Curso no encontrado")
-                    return@addOnSuccessListener
-                }
-                val cursoSnap = courseSnapshot.children.firstOrNull()
-                val cursoSel = cursoSnap?.getValue(Curso::class.java)
-                if (cursoSnap == null || cursoSel == null) {
-                    onResult(false, "Curso no encontrado")
-                    return@addOnSuccessListener
-                }
-                val targetCycle = cursoSel.ciclo
-
-                // Verificar conflictos en horarios del docente (mismo día y horas superpuestas)
-                refHorarioUsuario.child(idUsuario.toString()).get()
-                    .addOnSuccessListener { userHorSnapshot ->
-                        var conflictoDocente = false
-                        for (child in userHorSnapshot.children) {
-                            val diaExistente = child.child("horario/dia").getValue(String::class.java) ?: ""
-                            if (diaExistente == horario.dia) {
-                                val horasExistentes = child.child("horario/horas").children
-                                    .mapNotNull { it.getValue(Long::class.java) }
-                                if (horasExistentes.any { horario.horas.contains(it) }) {
-                                    conflictoDocente = true
-                                    break
-                                }
-                            }
-                        }
-                        if (conflictoDocente) {
-                            onResult(false, "Existe cruce con otro curso del mismo ciclo o en el horario del docente")
-                            return@addOnSuccessListener
-                        }
-
-                        // Verificar conflictos con cursos del mismo ciclo a nivel global (mismo día y hora)
-                        refHorarios.get().addOnSuccessListener { horariosSnap ->
-                            val cursosConflicto = mutableSetOf<Long>()
-                            for (hChild in horariosSnap.children) {
-                                val diaHorario = hChild.child("dia").getValue(String::class.java) ?: ""
-                                if (diaHorario != horario.dia) continue
-                                val horasHorario = hChild.child("horas").children
-                                    .mapNotNull { it.getValue(Long::class.java) }
-                                if (!horasHorario.any { horario.horas.contains(it) }) continue
-                                val idCursoExistente = hChild.child("id_curso")
-                                    .getValue(Long::class.java) ?: 0L
-                                if (idCursoExistente == horario.id_curso) continue // Mismo curso
-                                cursosConflicto.add(idCursoExistente)
-                            }
-
-                            // Función para guardar el nuevo horario
-                            fun guardarNuevoHorario() {
-                                // Paso 1: obtener el siguiente id_horario incremental
-                                refHorarios.orderByChild("id_horario").limitToLast(1).get()
-                                    .addOnSuccessListener { snapshot ->
-                                        val maxId = snapshot.children.mapNotNull {
-                                            it.child("id_horario").getValue(Long::class.java)
-                                        }.maxOrNull() ?: 0L
-                                        val siguienteId = (maxId + 1).toString()
-
-                                        val nuevoGrupo = cursoSel.grupos + 1
-                                        val horarioAGuardar = horario.copy(
-                                            id_horario = siguienteId.toLong(),
-                                            grupo = nuevoGrupo.toLong()
-                                        )
-
-
-                                        // 🔄 Asegúrate que refUsuarios apunte a la ruta raíz "usuario"
-                                        refUsuarios.orderByChild("usuario_id").equalTo(idUsuario.toDouble()).limitToFirst(1)
-                                            .get()
-                                            .addOnSuccessListener { usuarioSnap ->
-                                                Log.d("DEBUG", "Snapshot encontrado: ${usuarioSnap.exists()} con ${usuarioSnap.childrenCount} hijos")
-                                                val userSnap = usuarioSnap.children.firstOrNull()
-                                                if (userSnap == null) {
-                                                    onResult(false, "Usuario no encontrado")
-                                                    return@addOnSuccessListener
-                                                }
-
-                                                val usuarioObj = userSnap.getValue(Usuario::class.java)
-                                                if (usuarioObj == null) {
-                                                    onResult(false, "Error al convertir usuario")
-                                                    return@addOnSuccessListener
-                                                }
-
-                                                val datosUsuario = mapOf(
-                                                    "usuario_id" to usuarioObj.usuario_id,
-                                                    "u_tipo" to usuarioObj.u_tipo,
-                                                    "u_nombres" to usuarioObj.u_nombres,
-                                                    "u_apellidos" to usuarioObj.u_apellidos,
-                                                    "cu" to usuarioObj.cu,
-                                                    "u_contrasena" to usuarioObj.u_contrasena,
-                                                    "u_nrotelefonico" to usuarioObj.u_nrotelefonico,
-                                                    "notificacion" to usuarioObj.notificacion
-                                                )
-
-                                                val horarioUsuarioData = mapOf(
-                                                    "horario" to horarioAGuardar,
-                                                    "periodo" to "2025-1",
-                                                    "semana" to 0,
-                                                    "usuario" to datosUsuario
-                                                )
-
-                                                val updates = hashMapOf<String, Any>(
-                                                    "horario/$siguienteId" to horarioAGuardar,
-                                                    "horario_usuario/$idUsuario/$siguienteId" to horarioUsuarioData,
-                                                    "curso/${cursoSnap.key}/grupos" to nuevoGrupo
-                                                )
-
-                                                databaseRef.updateChildren(updates).addOnCompleteListener { task ->
-                                                    if (task.isSuccessful) {
-                                                        onResult(true, "Horario guardado")
-                                                    } else {
-                                                        onResult(false, "Error al guardar")
-                                                    }
-                                                }
-                                            }.addOnFailureListener {
-                                                Log.e("ERROR", "Fallo al recuperar usuario", it)
-                                                onResult(false, "Error al recuperar datos del usuario")
-                                            }
-
-                                    }.addOnFailureListener {
-                                        Log.e("ERROR", "Fallo al obtener nuevo ID de horario", it)
-                                        onResult(false, "Error al generar nuevo id_horario")
-                                    }
-                            }
-
-
-
-                            if (cursosConflicto.isNotEmpty()) {
-                                // Verificar si alguno pertenece al mismo ciclo
-                                refCursos.get().addOnSuccessListener { cursosSnap ->
-                                    var conflictoCiclo = false
-                                    for (cChild in cursosSnap.children) {
-                                        val idCurso = cChild.child("id_curso").getValue(Long::class.java)
-                                        val cicloCurso = cChild.child("ciclo").getValue(Int::class.java)
-                                        if (idCurso != null && cicloCurso != null
-                                            && cicloCurso == targetCycle
-                                            && cursosConflicto.contains(idCurso.toLong())) {
-                                            conflictoCiclo = true
-                                            break
-                                        }
-                                    }
-                                    if (conflictoCiclo) {
-                                        onResult(false, "Existe cruce con otro curso del mismo ciclo o en el horario del docente")
-                                    } else {
-                                        guardarNuevoHorario()
-                                    }
-                                }.addOnFailureListener { e ->
-                                    handleException(e, "Error al verificar cursos")
-                                    onResult(false, "Error al verificar cursos")
-                                }
-                            } else {
-                                guardarNuevoHorario()
-                            }
-                        }.addOnFailureListener { e ->
-                            handleException(e, "Error al verificar horarios globales")
-                            onResult(false, "Error al verificar horarios globales")
-                        }
-                    }.addOnFailureListener { e ->
-                        handleException(e, "Error al verificar horario del docente")
-                        onResult(false, "Error al verificar horario del docente")
-                    }
-            }.addOnFailureListener { e ->
-                handleException(e, "Error al obtener curso")
-                onResult(false, "Error al obtener curso")
-            }
-    }*/
-
     private fun generarAulasFacultad(): List<String> {
         val aulas = mutableListOf<String>()
         listOf("", "-NP").forEach { sufijo ->
@@ -593,6 +442,129 @@ class FbViewModel @Inject constructor(
     }
 
 
+    fun obtenerHorarioActivoParaDocente(
+        usuarioId: Int,
+        callback: (Horario?) -> Unit
+    ) {
+        obtenerHorariosPorUsuario(usuarioId) { lista ->
+            val calendario = Calendar.getInstance()
+            val hora = calendario.get(Calendar.HOUR_OF_DAY)
+            val minuto = calendario.get(Calendar.MINUTE)
+            val bloque = obtenerBloquePorHora(hora, minuto)
+
+            val dias = listOf("Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado")
+            val hoy = dias[calendario.get(Calendar.DAY_OF_WEEK) - 1]
+
+            val actual = lista.find { it.dia == hoy && bloque in it.horas }
+            callback(actual)
+        }
+    }
+
+    private fun obtenerBloquePorHora(hora: Int, minuto: Int): Long {
+        return when {
+            hora in 8..9 -> 1
+            hora in 10..11 -> 2
+            hora in 12..13 -> 3
+            hora in 14..15 -> 4
+            hora in 16..17 -> 5
+            hora in 18..19 -> 6
+            hora in 20..21 -> 7
+            else -> 0
+        }.toLong()
+    }
+
+    /*fun verificarAsistenciaPermitida(
+        usuarioId: Int,
+        dia: String,
+        hora: Int,
+        onResult: (Boolean, Horario?) -> Unit
+    ) {
+        val ref = database.getReference("horario_usuario/${usuarioId}")
+
+        ref.get().addOnSuccessListener { snapshot ->
+            val tz = TimeZone.getTimeZone("America/Lima")
+            val ahora = Calendar.getInstance(tz)
+            val semanaActual = ahora.get(Calendar.WEEK_OF_YEAR)
+
+            val listaHorarios = snapshot.children.mapNotNull {
+                val horario = it.child("horario").getValue(Horario::class.java)
+                val idHorario = it.key?.toLongOrNull()
+                if (horario != null && idHorario != null) Pair(horario, idHorario) else null
+            }
+
+            val horarioValido = listaHorarios.firstOrNull {
+                it.first.dia == dia && it.first.horas.contains(hora.toLong())
+            }
+
+            if (horarioValido != null) {
+                val (horario, idHorario) = horarioValido
+                val refRegistro = database.getReference("registro_semanal/$usuarioId/$idHorario")
+                refRegistro.get().addOnSuccessListener { snap ->
+                    val semanaRegistrada = snap.getValue(Int::class.java)
+                    val permitido = semanaRegistrada == null || semanaRegistrada != semanaActual
+                    onResult(permitido, horario)
+                }.addOnFailureListener {
+                    onResult(false, null)
+                }
+            } else {
+                onResult(false, null)
+            }
+        }.addOnFailureListener {
+            onResult(false, null)
+        }
+    }*/
+    fun verificarAsistenciaPermitida(
+        usuarioId: Int,
+        dia: String,
+        hora: Int,
+        onResult: (Boolean, Horario?) -> Unit
+    ) {
+        val ref = database.getReference("horario_usuario/$usuarioId")
+        ref.get().addOnSuccessListener { snapshot ->
+            // semana actual (ISO)
+            val tz = TimeZone.getTimeZone("America/Lima")
+            val ahora = Calendar.getInstance(tz)
+            val semanaActual = ahora.get(Calendar.WEEK_OF_YEAR)
+
+            // obtener lista de (horario, idHorario)
+            val lista = snapshot.children.mapNotNull { child ->
+                val horario = child.child("horario").getValue(Horario::class.java)
+                val idH = child.key?.toIntOrNull()
+                if (horario != null && idH != null) Pair(horario, idH) else null
+            }
+
+            // buscar el horario que coincide con dia + bloque
+            val encontrado = lista.firstOrNull { (h, _) ->
+                h.dia == dia && h.horas.contains(hora.toLong())
+            }
+
+            if (encontrado != null) {
+                val (horario, idH) = encontrado
+                // ahora consultamos el contador de semanas en horario_usuario
+                val semanaRef = database
+                    .getReference("horario_usuario/$usuarioId/$idH/semana")
+                semanaRef.get().addOnSuccessListener { snap ->
+                    val semRegistrada = snap.getValue(Int::class.java) ?: 0
+                    // permitimos registrar solo si no coincide con la semana actual
+                    val permitido = semRegistrada < semanaActual
+                    onResult(permitido, horario)
+                }.addOnFailureListener {
+                    onResult(false, null)
+                }
+            } else {
+                onResult(false, null)
+            }
+        }.addOnFailureListener {
+            onResult(false, null)
+        }
+    }
+
+
+
+
+
+
+
     fun cargarCursos() {
         refCursos.get().addOnSuccessListener { snapshot ->
             cursos.value = snapshot.children.mapNotNull { it.getValue(Curso::class.java) }
@@ -600,9 +572,6 @@ class FbViewModel @Inject constructor(
             cursos.value = emptyList()
         }
     }
-    /*fun obtenerNombreCurso(idCurso: Long): String {
-        return cursos.value.find { it.id_curso == idCurso }?.nombre ?: "Curso $idCurso"
-    }*/
 
     fun obtenerNombreCursoPorId(idCurso: Long, callback: (String) -> Unit) {
         refCursos.orderByChild("id_curso").equalTo(idCurso.toDouble()).get()
@@ -616,6 +585,37 @@ class FbViewModel @Inject constructor(
             }
     }
 
+    fun programarNotificaciones(context: Context, diasHoras: List<Pair<Int, Int>>) {
+        for ((diaSemana, bloque) in diasHoras) {
+            val calendar = Calendar.getInstance().apply {
+                set(Calendar.DAY_OF_WEEK, diaSemana)
+                set(Calendar.HOUR_OF_DAY, horaInicioBloque(bloque))
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                add(Calendar.MINUTE, -10) // 10 minutos antes
+            }
+
+            val delay = calendar.timeInMillis - System.currentTimeMillis()
+            if (delay <= 0) continue
+
+            val workRequest = OneTimeWorkRequestBuilder<NotificacionWorker>()
+                .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                .build()
+
+            WorkManager.getInstance(context).enqueue(workRequest)
+        }
+    }
+
+    fun horaInicioBloque(bloque: Int): Int = when (bloque) {
+        1 -> 8
+        2 -> 10
+        3 -> 12
+        4 -> 14
+        5 -> 16
+        6 -> 18
+        7 -> 20
+        else -> 0
+    }
 
 
 

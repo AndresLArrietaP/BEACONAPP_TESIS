@@ -64,7 +64,7 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
         contentScale = ContentScale.FillBounds,
         modifier = Modifier.fillMaxSize()
     )
-    Column(
+    /*Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -72,11 +72,11 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
         if (vm.inProgress.value) {
             CircularProgressIndicator()
         }
-    }
+    }*/
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 50.dp)
+            .padding(top = 20.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -87,7 +87,7 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
             fontSize = 30.sp
         )
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         CustomTextField(
             value = nombres,
@@ -216,7 +216,7 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
             }
         }
 
-        Spacer(modifier = Modifier.height(15.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Row(
             horizontalArrangement = Arrangement.Center,
@@ -264,11 +264,11 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
                 }
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(5.dp))
 
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(50.dp))
+                    .clip(RoundedCornerShape(40.dp))
                     .background(Color.White)
             ) {
                 Button(
@@ -279,7 +279,7 @@ fun SignupScreen(navController: NavController, vm: FbViewModel) {
                     },
                     colors = ButtonDefaults.buttonColors(Color.Transparent),
                     modifier = Modifier
-                        .width(100.dp)
+                        .width(80.dp)
                         .padding(10.dp)
                 ) {
                     Image(

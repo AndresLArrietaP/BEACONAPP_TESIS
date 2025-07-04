@@ -19,6 +19,220 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.beacons_app.R
 import com.example.beacons_app.models.AsistenciaUsuario
+import com.example.beacons_app.models.Curso
+import com.example.beacons_app.models.Horario
+import com.example.beacons_app.models.Usuario
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java.util.*
+
+@Composable
+fun HistorialAScreen(navController: NavController, usuario: Usuario) {
+    val db = Firebase.database.reference
+    val asistenciaUsuarioList = remember { mutableStateListOf<AsistenciaUsuario>() }
+    val cursoInfoMap = remember { mutableStateMapOf<Int, Triple<String, Long, String>>() } // horario_id -> (cursoSiglas, grupo, aula)
+    var orderDescending by remember { mutableStateOf(true) }
+
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val calendar = Calendar.getInstance()
+    val currentDate = calendar.time
+    calendar.add(Calendar.DAY_OF_YEAR, -30)
+    val limitDate = calendar.time
+
+    LaunchedEffect(usuario.usuario_id) {
+        val asistencias = db.child("asistencia_usuario").child(usuario.usuario_id.toString()).get().await()
+        val lista = asistencias.children.mapNotNull { it.getValue(AsistenciaUsuario::class.java) }
+            .filter {
+                try {
+                    val fecha = dateFormat.parse(it.fecha_registro)
+                    fecha?.after(limitDate) == true
+                } catch (e: Exception) {
+                    false
+                }
+            }
+
+        asistenciaUsuarioList.clear()
+        asistenciaUsuarioList.addAll(lista)
+
+        // Extraer info de cursos para cada asistencia
+        lista.forEach { asistencia ->
+            val horarioId = asistencia.asistencia.horario_id
+            if (!cursoInfoMap.containsKey(horarioId)) {
+                val horariosSnap = db.child("horario_usuario").child(usuario.usuario_id.toString()).get().await()
+                for (h in horariosSnap.children) {
+                    val horario = h.child("horario").getValue(Horario::class.java)
+                    if (horario != null && horario.id_horario.toInt() == horarioId) {
+                        val cursoSnap = db.child("curso").child(horario.id_curso.toString()).get().await()
+                        val nombre = cursoSnap.child("nombre").getValue(String::class.java) ?: "--"
+                        val siglas = compactarNombreCurso(nombre)
+                        cursoInfoMap[horarioId] = Triple(siglas, horario.grupo, horario.aula)
+                    }
+                }
+            }
+        }
+    }
+
+    Image(
+        painter = painterResource(id = R.drawable.gr),
+        contentDescription = null,
+        contentScale = ContentScale.FillBounds,
+        modifier = Modifier.fillMaxSize()
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Spacer(modifier = Modifier.height(48.dp))
+
+        Text(
+            text = "HISTORIAL DE ASISTENCIAS",
+            color = Color.White,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "para ${usuario.u_nombres} ",
+            color = Color.LightGray,
+            fontSize = 16.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
+            modifier = Modifier.fillMaxWidth().padding(end = 16.dp)
+        ) {
+            Button(
+                onClick = { orderDescending = !orderDescending },
+                shape = RoundedCornerShape(20),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBBDEFB)),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text(
+                    text = if (orderDescending) "Descendente" else "Ascendente",
+                    color = Color.Black,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .background(Color.White)
+                .padding(vertical = 4.dp)
+        ) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFE3F2FD))
+                        .padding(vertical = 8.dp, horizontal = 4.dp)
+                ) {
+                    Text("Fecha", modifier = Modifier.weight(1.2f), color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Hora", modifier = Modifier.weight(1.2f), color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Curso", modifier = Modifier.weight(1f), color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Grupo", modifier = Modifier.weight(0.8f), color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Aula", modifier = Modifier.weight(0.8f), color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
+
+            val sortedList = if (orderDescending) asistenciaUsuarioList.sortedByDescending { it.fecha_registro } else asistenciaUsuarioList.sortedBy { it.fecha_registro }
+
+            items(sortedList) { asistenciaUsuario ->
+                val info = cursoInfoMap[asistenciaUsuario.asistencia.horario_id] ?: Triple("-", 0L, "-")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp, horizontal = 4.dp)
+                        .background(Color(0xFFF5F5F5), shape = RoundedCornerShape(6.dp))
+                        .padding(vertical = 8.dp, horizontal = 8.dp)
+                ) {
+                    Text(asistenciaUsuario.fecha_registro, modifier = Modifier.weight(1.2f), color = Color.Black, fontSize = 14.sp)
+                    Text(asistenciaUsuario.hora_registro, modifier = Modifier.weight(1.2f), color = Color.Black, fontSize = 14.sp)
+                    Text(info.first, modifier = Modifier.weight(1f), color = Color.Black, fontSize = 14.sp)
+                    Text("${info.second}", modifier = Modifier.weight(0.8f), color = Color.Black, fontSize = 14.sp)
+                    Text(info.third, modifier = Modifier.weight(0.8f), color = Color.Black, fontSize = 14.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50.dp))
+                .background(color = Color(0xFFBBDEFB))
+        ) {
+            Button(
+                onClick = {
+                    navController.popBackStack()
+                },
+                colors = ButtonDefaults.buttonColors(Color.Transparent),
+                modifier = Modifier
+                    .width(115.dp)
+                    .padding(5.dp)
+            ) {
+                Text(
+                    text = "Volver",
+                    color = Color.Black,
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+fun compactarNombreCurso(nombreCurso: String): String {
+    val palabras = nombreCurso.trim().split(" ")
+        .filter { it.isNotBlank() && !setOf("DE", "Y", "DEL", "LA", "EL", "EN", "LOS", "LAS", "A").contains(it.uppercase()) }
+
+    if (palabras.isEmpty()) return ""
+
+    val iniciales = palabras.mapNotNull { it.firstOrNull()?.uppercaseChar() }
+
+    return iniciales.joinToString(" ")
+}
+
+
+
+
+/*package com.example.beacons_app.auth
+
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.beacons_app.R
+import com.example.beacons_app.models.AsistenciaUsuario
 import com.example.beacons_app.models.Usuario
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ktx.database
@@ -223,6 +437,6 @@ fun HistorialAScreen(navController: NavController, usuario: Usuario) {
 
         Spacer(modifier = Modifier.height(8.dp))
     }
-}
+}*/
 
 

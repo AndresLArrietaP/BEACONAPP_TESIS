@@ -38,7 +38,7 @@ object AppModule {
     @Provides @Singleton
     fun provideFirebaseDatabase(): FirebaseDatabase = FirebaseDatabase.getInstance()
 
-    @Provides
+    /*@Provides
     fun provideGestorAsistencia(
         bluetoothAdapter: BluetoothAdapter,
         @ApplicationContext ctx: Context,
@@ -46,5 +46,5 @@ object AppModule {
         auth: FirebaseAuth
     ): GestorAsistenciaReceptor = GestorAsistenciaBLEReceptor(
         bluetoothAdapter, ctx, database, auth
-    )
+    )*/
 }
